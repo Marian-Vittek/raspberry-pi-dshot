@@ -18,6 +18,12 @@ int main() {
     motorImplementationInitialize(motorPins, N);
 
 
+    // send 0 throttle during 5 second
+    for(i=0; i<N; i++) throttles[i] = 0;
+    for(i=0; i<500; i++) {
+        motorImplementationSendThrottles(motorPins, N, throttles);
+        usleep(10000);
+    }
     // make motors spinning on 15% throttle during 5 second
     for(i=0; i<N; i++) throttles[i] = 0.15;
     for(i=0; i<500; i++) {
