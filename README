@@ -4,7 +4,7 @@ the GPIO pins of a Raspberry Pi.  It was developed and used in a
 Raspberry Pi zero 2 computer, but it should work for other Pis if you
 choose the right version of the dshot protocol.
 
-The code is inspired by
+The original code comes from
 https://github.com/dmrlawson/raspberrypi-dshot. Compared to the
 original it is improved in two ways:
 
