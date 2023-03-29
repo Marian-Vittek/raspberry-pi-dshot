@@ -1,6 +1,6 @@
 /*
 Code to generate DSHOT protocol signals from a Raspberry Pi GPIO
-output.  Inspired by the code on
+output.  Original code comes from
 https://github.com/dmrlawson/raspberrypi-dshot.  This code is enhanced
 by the possibility to broadcast mutliple dshot frames on multiple pins
 at once and by some autocalibration which may or may not work on your
