@@ -1,28 +1,22 @@
 
-This is a very quick and dirty C code to send DSHOT frames to ESCs via
-the GPIO pins of a Raspberry Pi.  It was developed and used in a
-Raspberry Pi zero 2 computer, but it should work for other Pis if you
-choose the right version of the dshot protocol.
+This is an ad-hoc implementation of the DSHOT protocol to control ESCs
+via the GPIO pins of a Raspberry Pi.  It has been developed and used
+in a Raspberry Pi Zero 2.
 
-The original code comes from
+It uses busy wait and 'clock_gettime' for timing. It handles DSHOT 150
+protocol well. Other versions may cause problems.
+
+The code is inspired by
 https://github.com/dmrlawson/raspberrypi-dshot. Compared to the
-original it is improved in two ways:
+original, this version differs in two points:
 
-
+- It uses "clock_gettime" instead of an empty loop.
 - It allows multiple frames to be sent to multiple pins at once.
-- There is automatic calibration of constants for busy wait loops.
 
-
-It uses busy wait loops for timing. Fortunately, dshot protocol frames
-take only a few microseconds. In such a short time there is little
-chance that the process will be interrupted by the OS. As a result,
-the code is usable if you choose the right version of dshot protocol.
-We use it for dshot 300 with frames taking 53.28us.
-
-
-
-
-To compile and run a simple test spinning 4 motors, type
+To compile and run a simple test that spins 4 motors, type
 
     	   make test
 	   sudo ./test
+
+If it does not run, you may need to edit 'motor-dshot.c' and adjust
+DSHOT_AD_HOC_OFFSET macro.
