@@ -1,10 +1,9 @@
 /*
 Code to generate DSHOT protocol signals from a Raspberry Pi GPIO
-output.  Inspired by the code on
-https://github.com/dmrlawson/raspberrypi-dshot.  This code uses
-'clock_gettime' for timing and allows to broadcast mutliple dshot
-frames on multiple pins at once.  "getGpioRegBase" function was taken
-from
+output.  Inspired by https://github.com/dmrlawson/raspberrypi-dshot.
+This code uses 'clock_gettime' for timing and allows to broadcast
+mutliple dshot frames on multiple pins at once.  "getGpioRegBase"
+function was taken from
 https://stackoverflow.com/questions/69425540/execute-mmap-on-linux-kernel
 */
 
@@ -89,11 +88,9 @@ https://stackoverflow.com/questions/69425540/execute-mmap-on-linux-kernel
 #define NUM_PINS 		27
 
     
-double dshotLatencyOfGetNanosecondsNs;
-
 // I/O access
-void 			*dshotGpioMap;
-volatile uint32_t 	*dshotGpio;
+static void 			*dshotGpioMap;
+static volatile uint32_t 	*dshotGpio;
 
 
 static inline uint64_t dshotGetNanoseconds() {
@@ -110,7 +107,7 @@ static inline uint64_t dshotGetNanoseconds() {
 }
 
 
-int dshotAddChecksumAndTelemetry(int packet, int telem) {
+static int dshotAddChecksumAndTelemetry(int packet, int telem) {
     int packet_telemetry = (packet << 1) | (telem & 1);
     int i;
     int csum = 0;
@@ -123,7 +120,7 @@ int dshotAddChecksumAndTelemetry(int packet, int telem) {
     return ((packet_telemetry << 4) | csum);
 }
 
-void dshotSendFrames(uint32_t allMotorsPinMask, uint32_t *clearMasks) {
+static void dshotSendFrames(uint32_t allMotorsPinMask, uint32_t *clearMasks) {
     int 		i;
     int64_t		t, offset1, offset2, offset3;
     volatile unsigned	*gpioset;
@@ -173,7 +170,7 @@ static uint32_t getGpioRegBase(void) {
         fclose(fd);
     }
 
-    printf("debug CPU: %d\n", cpu);
+    printf("debug CPU type: %d\n", cpu);
     switch (cpu) {
         case 0: // BCM2835 [Pi 1 A; Pi 1 B; Pi 1 B+; Pi Zero; Pi Zero W]
             return(0x20000000 + GPIO_BASE_OFFSET);
@@ -188,10 +185,7 @@ static uint32_t getGpioRegBase(void) {
     }
 }
 
-//
-// Set up a memory regions to access GPIO
-//
-void dshotSetupIo() {
+static void dshotSetupIo() {
     int  	mem_fd;
     int32_t	gpioBase;
 
@@ -226,10 +220,7 @@ void dshotSetupIo() {
 }
 
 
-/////////////////////////////////////////////////////////////////////////////////////////////////
-// calibration stuff
-
-uint32_t dshotGetAllMotorsPinMask(int motorPins[], int motorMax) {
+static uint32_t dshotGetAllMotorsPinMask(int motorPins[], int motorMax) {
     int 	i;
     uint32_t 	allMotorsPinsMask;
 
@@ -239,8 +230,11 @@ uint32_t dshotGetAllMotorsPinMask(int motorPins[], int motorMax) {
     return(allMotorsPinsMask);
 }
 
+
+
 //////////////////////////////////////////////////////////////////////////////////////////////
-// raspilot motor instance implementation
+// Main exported functions of the module implementing raspilot motor instance.
+//////////////////////////////////////////////////////////////////////////////////////////////
 
 void motorImplementationInitialize(int motorPins[], int motorMax) {
     int i, pin;
