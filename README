@@ -16,7 +16,7 @@ original, this version differs in two points:
 To compile and run a simple test that spins 4 motors, type
 
     	   make test
-	   sudo ./test
+	   sudo chrt -f 99 ./test
 
 If it does not run, you may need to edit 'motor-dshot.c' and adjust
 DSHOT_AD_HOC_OFFSET macro.

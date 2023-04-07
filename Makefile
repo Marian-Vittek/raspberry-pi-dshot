@@ -9,5 +9,11 @@ test: test.c motor-dshot.c
 clean: always
 	rm -f test motor-dshot.s
 
+run: always
+	sudo chrt -f 99 ./test
+
+
 .PHONY: always
+
+
 

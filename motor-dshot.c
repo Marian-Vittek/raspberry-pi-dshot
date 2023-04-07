@@ -170,7 +170,7 @@ static uint32_t getGpioRegBase(void) {
         fclose(fd);
     }
 
-    printf("debug CPU type: %d\n", cpu);
+    // printf("debug CPU type: %d\n", cpu);
     switch (cpu) {
         case 0: // BCM2835 [Pi 1 A; Pi 1 B; Pi 1 B+; Pi Zero; Pi Zero W]
             return(0x20000000 + GPIO_BASE_OFFSET);
