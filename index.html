@@ -4,7 +4,8 @@
 	<title>Dshot for Raspberry Pi</title>
     </head>
     
-    <body>
+    <body style="font-size:120%;">
+
 	<pre>
 
 <br>
@@ -12,26 +13,29 @@
 Raspberry Pi Dshot protocol implementation.
 </h3>
 
-<b><a href="https://github.com/Marian-Vittek/raspberry-pi-dshot">This project</a></b> implements DSHOT protocol to control ESCs via the GPIO
-pins of a Raspberry Pi.  It has been developed and used in a Raspberry
-Pi Zero 2.
+Implementation of DSHOT protocol for Raspberry Pi. It allows to
+control ESCs directly via the GPIO pins.
 
 It uses busy wait and 'clock_gettime' for timing. It handles DSHOT 150
 protocol well. Other versions may cause problems.
 
-The code is inspired by
-https://github.com/dmrlawson/raspberrypi-dshot. Compared to the
+The code is inspired by this <a href="https://github.com/dmrlawson/raspberrypi-dshot">project</a>. Compared to the
 original, this version differs in two points:
 
 - It uses "clock_gettime" instead of an empty loop.  It allows
 - multiple frames to be sent to multiple pins at once.
 
-To compile and run a simple test that spins 4 motors, type
+To get started <b><a href="https://github.com/Marian-Vittek/raspberry-pi-dshot">download source code from github</a></b>.
 
-    	   make test sudo chrt -f 99 ./test
+To compile and run example spinning 4 motors type:
+
+<b>
+    make test
+    sudo chrt -f 99 ./test
+</b>
 
 If it does not run, you may need to edit 'motor-dshot.c' and adjust
-DSHOT_AD_HOC_OFFSET macro.
-    </pre>
+DSHOT_AD_HOC_OFFSET.
+	</pre>
     </body>
 </html>
