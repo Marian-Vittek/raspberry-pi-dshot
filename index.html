@@ -19,11 +19,11 @@ It uses busy wait and 'clock_gettime' for timing. It handles DSHOT 150
 protocol well. Other versions may cause problems.
 
 <br><br>
-The code is inspired by this <a href="https://github.com/dmrlawson/raspberrypi-dshot">project</a>. Compared to the
+The code is inspired by <a href="https://github.com/dmrlawson/raspberrypi-dshot">dmrlawson/raspberrypi-dshot</a>. Compared to the
 original, this version differs in two points:
 <ul>
- <li>It uses "clock_gettime" instead of an empty loop.  It allows
- <li>multiple frames to be sent to multiple pins at once.
+ <li>It uses "clock_gettime" for timing instead of an empty loop.  
+ <li>It allows multiple frames to be sent to multiple pins at once.
 </ul>
 
 To get started <b><a href="https://github.com/Marian-Vittek/raspberry-pi-dshot">download source code from github</a></b>.
