@@ -13,7 +13,7 @@ int motorPins[N] = {6, 13, 19, 26};
 double throttles[N];
 
 int main() {
-    int i;
+    int i, k;
 
     motorImplementationInitialize(motorPins, N);
 
@@ -24,11 +24,14 @@ int main() {
         usleep(10000);
     }
 
-    // make motors spinning on 15% throttle during 5 seconds
-    for(i=0; i<N; i++) throttles[i] = 0.15;
-    for(i=0; i<500; i++) {
-	motorImplementationSendThrottles(motorPins, N, throttles);
-	usleep(10000);
+    // make spinning 1 motor after another
+    for(k=0;k<12;k++) {
+	for(i=0; i<N; i++) throttles[i] = 0;
+	throttles[k%4] = 0.15;
+	for(i=0; i<100; i++) {
+	    motorImplementationSendThrottles(motorPins, N, throttles);
+	    usleep(10000);
+	}
     }
     
     // stop motors
