@@ -1,7 +1,7 @@
 
 This is an ad-hoc implementation of the DSHOT protocol to control ESCs
 via the GPIO pins of a Raspberry Pi.  It was developed and used on
-Raspberry Pi Zero 2, but should work on Raspberry Pi 3 and newer. It
+Raspberry Pi Zero 2, but should work on any Raspberry Pi 3 and newer. It
 runs on standard Raspbian OS, no RT extension required.
 
 
