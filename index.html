@@ -13,13 +13,27 @@ Raspberry Pi Dshot protocol implementation.
 
 Implementation  of  DSHOT protocol  for  Raspberry  Pi. It  allows  to
 control ESCs directly via the GPIO pins.
-<br>It handles DSHOT 150 protocol
-well.  Other  versions  may  cause problems.
-<br><br>
-To  get  started  <b><a
-href="https://github.com/Marian-Vittek/raspberry-pi-dshot">download
-source code from github</a></b>.
+<br>
+<br>
+<br>
 
+<h3>Download</h3>
+
+You can <b><a
+href="https://github.com/Marian-Vittek/raspberry-pi-dshot">download</a></b> source code from github.
+
+<br>
+<br>
+<br>
+
+<h3>About</h3>
+
+This implementation handles DSHOT 150 protocol
+well, other  versions  may  cause problems. The software is running on standard
+Raspbian OS, no RT extension is required. However, it may help if you use some
+<a href="https://forums.raspberrypi.com/viewtopic.php?t=245561&sid=d3b2f6139ccf00a88aa7a98db2aed7f3" >hacks</a>
+reducing interrupts on a specific core.
+<br><br>
 
 <br><br>
 The code is inspired by <a href="https://github.com/dmrlawson/raspberrypi-dshot">dmrlawson/raspberrypi-dshot</a>. Compared to the
@@ -28,18 +42,3 @@ original, this version differs in two points:
  <li>It uses "clock_gettime" for timing instead of an empty loop.  
  <li>It allows multiple frames to be sent to multiple pins at once.
 </ul>
-
-<br><br>
-To compile and run an example spinning 4 motors type:
-
-<b>
-<pre style="font-size:120%;">
-    make test
-    sudo chrt -f 99 ./test
-</pre>
-</b>
-
-You may also need to edit 'motor-dshot.c' and adjust
-DSHOT_AD_HOC_OFFSET to your ESC.
-    </body>
-</html>
