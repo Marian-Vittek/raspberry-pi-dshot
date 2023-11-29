@@ -8,8 +8,8 @@ runs on standard Raspbian OS, no RT extension required.
 It uses busy wait and 'clock_gettime' for timing. It handles DSHOT 150
 protocol well. Other versions may cause problems.  The software is
 running on standard Raspbian OS, no RT extension is required. However,
-it may help if you use some
-<a href="https://forums.raspberrypi.com/viewtopic.php?t=245561&sid=d3b2f6139ccf00a88aa7a98db2aed7f3">hacks</a> reducing interrupts on a specific core.
+it may help if you use some hacks from https://forums.raspberrypi.com/viewtopic.php?t=245561&sid=d3b2f6139ccf00a88aa7a98db2aed7f3
+to reduce interrupts on a specific core.
 
 The code is inspired by
 https://github.com/dmrlawson/raspberrypi-dshot. Compared to the
