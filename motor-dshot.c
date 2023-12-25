@@ -29,52 +29,62 @@ https://stackoverflow.com/questions/69425540/execute-mmap-on-linux-kernel
 #define DSHOT_VERSION 150
 #endif
 
-// This ad-hoc value have to be "guessed".  It specifies how much in
-// advance we are going to clear zero bits in dshot frames. Too small
-// value makes ESC to interpret 0 bits as being 1. Too large will
-// makes ESC not to recognize the protocol.
-#ifndef DSHOT_AD_HOC_OFFSET
-#define DSHOT_AD_HOC_OFFSET     (DSHOT_T0H_ns / 5)
-#endif
 
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
-
+// DSHOT_BIT_ns specifies the length of 1 bit in nanoseconds for
+// various Dshot protocols.
 
 #if DSHOT_VERSION == 150
 
 // DSHOT_150
-#define DSHOT_T0H_ns 2500
-#define DSHOT_BIT_ns 6670
+// Theoretical value from protocol definition
+//#define DSHOT_BIT_ns 6670
+// Value for my cheap ESC
+#define DSHOT_BIT_ns 5300
 
 #elif DSHOT_VERSION == 300
 
 // DSHOT_300
-#define DSHOT_T0H_ns 1250
-#define DSHOT_BIT_ns 3330
+// Theoretical values from protocol definition
+//#define DSHOT_BIT_ns 3330
+// Value for my cheap ESC
+#define DSHOT_BIT_ns 2700
 
 #elif DSHOT_VERSION == 600
 
 // DSHOT_600
-#define DSHOT_T0H_ns 0625
+// Not tested
 #define DSHOT_BIT_ns 1670
 
 #elif DSHOT_VERSION == 1200
 
 // DSHOT_1200
-#define DSHOT_T0H_ns 313
+// Not tested
 #define DSHOT_BIT_ns 830
 
 #endif
 
+
+// Define the length of T0H depending on the bit-rate
+// Theoretical value from protocol definition
+//#define DSHOT_T0H_ns (DSHOT_BIT_ns * 3 / 8)
+// Real value for my cheap ESC
+#define DSHOT_T0H_ns (DSHOT_BIT_ns * 3 / 9)
+
+// Which clocks to use for timing. Standard constants CLOCK_... from
+// time.h can be used here.
+#ifndef DSHOT_USE_CLOCK
+#define DSHOT_USE_CLOCK     	CLOCK_MONOTONIC_RAW
+#endif
+
 #define DSHOT_MAX_TIMING_ERROR_ns       2000
 // how many times we retry to send dshot frame if previous was not timed well
-#define DSHOT_MAX_RETRY                 3
+#define DSHOT_MAX_RETRY                 10
 #define USLEEP_BEFORE_REBROADCAST       100
 
-//#define DSHOT_USE__CLOCK              CLOCK_REALTIME
-#define DSHOT_USE__CLOCK                CLOCK_MONOTONIC_RAW 
+
 #define TIMESPEC_TO_INT(tt)             (tt.tv_sec * 1000000000LL + tt.tv_nsec)
 /////////
 
@@ -89,7 +99,7 @@ https://stackoverflow.com/questions/69425540/execute-mmap-on-linux-kernel
 #define GPIO_SET                (*(dshotGpio+7))
 #define GPIO_CLR                (*(dshotGpio+10))
 
-#define NUM_PINS                27
+#define DSHOT_NUM_PINS                27
 
 enum {
     DSHOT_CMD_MOTOR_STOP = 0,
@@ -134,16 +144,9 @@ static int dshot3dMode = 0;
 
 
 static inline uint64_t dshotGetNanoseconds() {
-#if 0 && defined(__ARM_ARCH)
-  unsigned cc;
-  asm volatile ("mrc p15, 0, %0, c15, c12, 1" : "=r" (cc));
-  // ??? how to translate to nanoseconds?
-  return (cc / ticksPerNanosecond);
-#else
-  struct timespec tt;
-  clock_gettime(DSHOT_USE__CLOCK, &tt);
-  return(TIMESPEC_TO_INT(tt));
-#endif
+    struct timespec tt;
+    clock_gettime(DSHOT_USE_CLOCK, &tt);
+    return(TIMESPEC_TO_INT(tt));
 }
 
 
@@ -171,7 +174,7 @@ static void dshotSend(uint32_t allMotorsPinMask, uint32_t *clearMasks) {
     gpioclear = &GPIO_CLR;
 
 
-    offset1 = DSHOT_T0H_ns - DSHOT_AD_HOC_OFFSET;
+    offset1 = DSHOT_T0H_ns;
     offset2 = DSHOT_T0H_ns;
     offset3 = DSHOT_BIT_ns - offset1 - offset2;
 
@@ -226,7 +229,7 @@ void dshotSendFrames(int motorPins[], int motorMax, unsigned frame[]) {
     uint32_t    clearMasks[16];
     uint32_t    msk, allMotorsMask;
 
-    assert(motorMax < NUM_PINS);
+    assert(motorMax < DSHOT_NUM_PINS);
 
     allMotorsMask = dshotGetAllMotorsPinMask(motorPins, motorMax);
 
@@ -311,7 +314,7 @@ static void dshotSetupIo() {
 
 // Send a command repeatedly during a given perion of time
 static void dshotRepeatSendCommand(int motorPins[], int motorMax, int cmd, int telemetry, int timePeriodMsec) {
-    unsigned    frame[NUM_PINS+1];
+    unsigned    frame[DSHOT_NUM_PINS+1];
     int         i;
     int64_t     t;
     
@@ -327,34 +330,14 @@ static void dshotRepeatSendCommand(int motorPins[], int motorMax, int cmd, int t
 // Main exported functions of the module implementing raspilot motor instance.
 //////////////////////////////////////////////////////////////////////////////////////////////
 
-void motorImplementationInitialize(int motorPins[], int motorMax) {
-    int         i, pin;
-    
-    dshotSetupIo();
-    
-    for(i=0; i<motorMax; i++) {
-        pin = motorPins[i];
-        INP_GPIO(pin);          // must use INP_GPIO before we can use OUT_GPIO
-        OUT_GPIO(pin);
-        GPIO_CLR = 1<<pin;
-    }
-
-    // send zero throttle for 5 seconds to initialize ESCs
-    dshotRepeatSendCommand(motorPins, motorMax, DSHOT_CMD_MOTOR_STOP, 0, 5000);
-}
-
-void motorImplementationFinalize(int motorPins[], int motorMax) {
-    munmap(dshotGpioMap, BLOCK_SIZE);
-}
-
 // This function allows to set bidirectional rotation (mode3dFlag!=0) and reverse rotation logic (reverseDirectionFlag!=0).
 // Changing 3D mode is interfering with rotation direction (at least on my ESC), so always reset the direction when changing 3D.
 void motorImplementationSet3dModeAndSpinDirection(int motorPins[], int motorMax, int mode3dFlag, int reverseDirectionFlag) {
     int         repeatMsec;
 
     // Repeat the command for some time to take effect. Do it longer in our case as we are not sure to send 
-    // all the frames correctly. If repeatMsec == 20, then this function will take 4*20 msec.
-    repeatMsec = 20;
+    // all the frames correctly. If repeatMsec == 25, then this function will take 4*25 msec.
+    repeatMsec = 25;
     
     dshot3dMode = mode3dFlag;
     if (dshot3dMode) {
@@ -372,18 +355,40 @@ void motorImplementationSet3dModeAndSpinDirection(int motorPins[], int motorMax,
     dshotRepeatSendCommand(motorPins, motorMax, DSHOT_CMD_SAVE_SETTINGS, 0, repeatMsec);
 }
 
+void motorImplementationInitialize(int motorPins[], int motorMax) {
+    int         i, pin;
+
+    dshotSetupIo();
+    
+    for(i=0; i<motorMax; i++) {
+        pin = motorPins[i];
+        INP_GPIO(pin);          // must use INP_GPIO before we can use OUT_GPIO
+        OUT_GPIO(pin);
+        GPIO_CLR = 1<<pin;
+    }
+
+    // Maybe by default set to normal direction and no reverse spin
+    // motorImplementationSet3dModeAndSpinDirection(motorPins, motorMax, 0, 0);
+    // Arm motors by sending DSHOT_CMD_MOTOR_STOP (aka 0) for 5 seconds
+    dshotRepeatSendCommand(motorPins, motorMax, DSHOT_CMD_MOTOR_STOP, 0, 5000);
+}
+
+void motorImplementationFinalize(int motorPins[], int motorMax) {
+    munmap(dshotGpioMap, BLOCK_SIZE);
+}
+
 void motorImplementationSendThrottles(int motorPins[], int motorMax, double motorThrottle[]) {
     int         i;
-    unsigned    frame[NUM_PINS+1];
+    unsigned    frame[DSHOT_NUM_PINS+1];
     int         val;
 
-    assert(motorMax < NUM_PINS);
+    assert(motorMax < DSHOT_NUM_PINS);
 
     for(i=0; i<motorMax; i++) {
         if (dshot3dMode) {
             // translate double throttles ranging <-1, 1> to dshot frames.
-            if (motorThrottle[i] > 0) {
-                val = motorThrottle[i] * 998 + 1049;
+            if (motorThrottle[i] >= 0) {
+                val = motorThrottle[i] * 999 + 1048;
             } else {
                 val = -motorThrottle[i] * 999 + 48;
             }
@@ -391,8 +396,9 @@ void motorImplementationSendThrottles(int motorPins[], int motorMax, double moto
             // translate double throttles ranging <0, 1> to dshot frames.
             val = motorThrottle[i] * 1999 + 48;
         }
-        // we use command 0 for zero thrust which should be used as arming sequence as well.
-        if (motorThrottle[i] == 0 || val < 48 || val >= 2048) val = DSHOT_CMD_MOTOR_STOP;
+        // we used command 0 for zero thrust which should be used as arming sequence as well.
+	// but in 3d mode we have to be carefull it seems to reset the motor.
+        if (/*motorThrottle[i] == 0 || */ val < 48 || val >= 2048) val = DSHOT_CMD_MOTOR_STOP;
         frame[i] = dshotAddChecksumAndTelemetry(val, 0);
     }
 
