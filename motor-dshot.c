@@ -39,7 +39,7 @@ https://stackoverflow.com/questions/69425540/execute-mmap-on-linux-kernel
 #if DSHOT_VERSION == 150
 
 // DSHOT_150
-// Theoretical value from protocol definition
+// Theoretical value from dshot protocol specification
 //#define DSHOT_BIT_ns 6670
 // Value for my cheap ESC
 #define DSHOT_BIT_ns 5300
@@ -47,22 +47,25 @@ https://stackoverflow.com/questions/69425540/execute-mmap-on-linux-kernel
 #elif DSHOT_VERSION == 300
 
 // DSHOT_300
-// Theoretical values from protocol definition
+// Dshot spec
 //#define DSHOT_BIT_ns 3330
-// Value for my cheap ESC
+// my ESC
 #define DSHOT_BIT_ns 2700
 
 #elif DSHOT_VERSION == 600
 
 // DSHOT_600
-// Not tested
-#define DSHOT_BIT_ns 1670
+// Spec
+//#define DSHOT_BIT_ns 1670
+// my ESC
+#define DSHOT_BIT_ns 1400
 
 #elif DSHOT_VERSION == 1200
 
 // DSHOT_1200
 // Not tested
 #define DSHOT_BIT_ns 830
+//#define DSHOT_BIT_ns 700
 
 #endif
 
@@ -90,7 +93,7 @@ https://stackoverflow.com/questions/69425540/execute-mmap-on-linux-kernel
 
 #define GPIO_BASE_OFFSET        0x00200000
 #define PAGE_SIZE               (4*1024)
-#define BLOCK_SIZE              (4*1024)
+#define MAPPED_MEM_SIZE         (0x100000)
 
 // GPIO setup macros. Always use INP_GPIO(x) before using OUT_GPIO(x) or SET_GPIO_ALT(x,y)
 #define INP_GPIO(g)             (*(dshotGpio+((g)/10)) &= ~(7<<(((g)%10)*3)))
@@ -98,6 +101,12 @@ https://stackoverflow.com/questions/69425540/execute-mmap-on-linux-kernel
 
 #define GPIO_SET                (*(dshotGpio+7))
 #define GPIO_CLR                (*(dshotGpio+10))
+
+// Rpi 5 RIO
+#define rioRAW ((rioregs *)(RIOBase)
+#define rioXOR ((rioregs *)(RIOBase + 0x1000 / 4))
+#define rioSET ((rioregs *)(RIOBase + 0x2000 / 4))
+#define rioCLR ((rioregs *)(RIOBase + 0x3000 / 4))
 
 #define DSHOT_NUM_PINS                27
 
@@ -132,9 +141,26 @@ enum {
     DSHOT_CMD_MAX = 47
 };
 
+typedef struct  /* __attribute__((packed)) */ {
+    uint32_t status;
+    uint32_t ctrl; 
+} GPIOregs;
+typedef struct  /* __attribute__((packed)) */ {
+    uint32_t Out;
+    uint32_t OE;
+    uint32_t In;
+    uint32_t InSync;
+} rioregs;
+
+// which cpu type I am running on
+uint32_t cpuType = 99;
+
 // I/O access
 static void                     *dshotGpioMap;
 static volatile uint32_t        *dshotGpio;
+
+// Pi 5 Rio
+static volatile uint32_t 	*RIOBase;
 
 // 3D mode, if dshot3dMode != 0 then reverse rotation is enabled
 static int dshot3dMode = 0;
@@ -170,14 +196,23 @@ static void dshotSend(uint32_t allMotorsPinMask, uint32_t *clearMasks) {
     volatile unsigned   *gpioclear;
 
     // prepare addresses
-    gpioset = &GPIO_SET;
-    gpioclear = &GPIO_CLR;
-
-
+    if (cpuType >= 4) {
+	gpioset = &rioSET->Out;
+	gpioclear = &rioCLR->Out;
+	// for some reason RIO on Rpi 5 works fine only if pre-activated 5 us in advance
+	*gpioclear = allMotorsPinMask;
+	t0 = dshotGetNanoseconds();
+	while (dshotGetNanoseconds() < t0 + 5000) ;
+    } else {
+	gpioset = &GPIO_SET;
+	gpioclear = &GPIO_CLR;
+    }
+    
     offset1 = DSHOT_T0H_ns;
     offset2 = DSHOT_T0H_ns;
     offset3 = DSHOT_BIT_ns - offset1 - offset2;
 
+    
     // We will try to send the frame several times if timing was wrong
     for(j=0; j<DSHOT_MAX_RETRY; j++) {
         // send dshot frame bits
@@ -246,41 +281,43 @@ void dshotSendFrames(int motorPins[], int motorMax, unsigned frame[]) {
     dshotSend(allMotorsMask, clearMasks);
 }
 
-static uint32_t getGpioRegBase(void) {
+static off_t getGpioRegBase(void) {
     const char *revision_file = "/proc/device-tree/system/linux,revision";
     uint8_t revision[4] = { 0 };
-    uint32_t cpu = 4;
     FILE *fd;
 
     if ((fd = fopen(revision_file, "rb")) == NULL) {
         printf("debug Error: Can't open '%s'\n", revision_file);
     } else {
         if (fread(revision, 1, sizeof(revision), fd) == 4) {
-            cpu = (revision[2] >> 4) & 0xf;
+            cpuType = (revision[2] >> 4) & 0xf;
         } else {
             printf("debug Error: Revision data too short\n");
         }
         fclose(fd);
     }
 
-    // printf("debug CPU type: %d\n", cpu);
-    switch (cpu) {
-        case 0: // BCM2835 [Pi 1 A; Pi 1 B; Pi 1 B+; Pi Zero; Pi Zero W]
-            return(0x20000000 + GPIO_BASE_OFFSET);
-        case 1: // BCM2836 [Pi 2 B]
-        case 2: // BCM2837 [Pi 3 B; Pi 3 B+; Pi 3 A+]
-            return(0x3f000000 + GPIO_BASE_OFFSET);
-        case 3: // BCM2711 [Pi 4 B]
-            return(0xfe000000 + GPIO_BASE_OFFSET);
-        default:
-            printf("debug Error: Unrecognised revision code\n");
-            return(0xfe000000 + GPIO_BASE_OFFSET);
+    // printf("debug CPU type: %d\n", cpuType);
+    switch (cpuType) {
+    case 0: // BCM2835 [Pi 1 A; Pi 1 B; Pi 1 B+; Pi Zero; Pi Zero W]
+	return(0x20000000 + GPIO_BASE_OFFSET);
+    case 1: // BCM2836 [Pi 2 B]
+    case 2: // BCM2837 [Pi 3 B; Pi 3 B+; Pi 3 A+]
+	return(0x3f000000 + GPIO_BASE_OFFSET);
+    case 3: // BCM2711 [Pi 4 B]
+	return(0xfe000000 + GPIO_BASE_OFFSET);
+    case 4: // [Pi 5]
+	return(0x1f00000000LL +  0xD0000);
+
+    default:
+	printf("debug Error: Unrecognised revision code\n");
+	return(0xfe000000 + GPIO_BASE_OFFSET);
     }
 }
 
 static void dshotSetupIo() {
     int         mem_fd;
-    int32_t     gpioBase;
+    off_t     gpioBase;
 
     gpioBase = getGpioRegBase();
     
@@ -293,13 +330,13 @@ static void dshotSetupIo() {
    /* mmap GPIO */
    dshotGpioMap = mmap(
       NULL,             // Any adddress in our space will do
-      BLOCK_SIZE,       // Map length
+      MAPPED_MEM_SIZE,       // Map length
       PROT_READ|PROT_WRITE,// Enable reading & writting to mapped memory
       MAP_SHARED,       // Shared with other processes
       mem_fd,           // File to map
-      gpioBase  // Offset to GPIO peripheral
+      gpioBase  	// Offset to GPIO peripheral
    );
-
+   
    close(mem_fd); //No need to keep mem_fd open after mmap
 
    if (dshotGpioMap == MAP_FAILED) {
@@ -309,7 +346,10 @@ static void dshotSetupIo() {
 
    // Always use volatile pointer!
    dshotGpio = (volatile unsigned *)dshotGpioMap;
-
+   
+   if (cpuType >= 4) {
+       RIOBase = (uint32_t *)((intptr_t)dshotGpioMap + 0x10000);
+   }
 }
 
 // Send a command repeatedly during a given perion of time
@@ -362,9 +402,21 @@ void motorImplementationInitialize(int motorPins[], int motorMax) {
     
     for(i=0; i<motorMax; i++) {
         pin = motorPins[i];
-        INP_GPIO(pin);          // must use INP_GPIO before we can use OUT_GPIO
-        OUT_GPIO(pin);
-        GPIO_CLR = 1<<pin;
+	if (cpuType >= 4) {
+	    // Rpi 5
+	    uint32_t *PADBase = (uint32_t *)((intptr_t)dshotGpioMap + 0x20000);
+	    uint32_t *pad = (uint32_t *)((intptr_t)PADBase + 4);   
+	    ((GPIOregs*)dshotGpioMap)[pin].ctrl = 5;
+	    pad[pin] = 0x11;		// 4mA + Slew rate Fast,
+	    rioSET->OE = 0x01<<pin;
+	    // rioSET->Out = 0x01<<pin;
+	    rioCLR->Out = 0x01<<pin;
+	} else {
+	    // previous Rpis
+	    INP_GPIO(pin);          // must use INP_GPIO before we can use OUT_GPIO
+	    OUT_GPIO(pin);
+	    GPIO_CLR = 1<<pin;
+	}
     }
 
     // Maybe by default set to normal direction and no reverse spin
@@ -374,7 +426,7 @@ void motorImplementationInitialize(int motorPins[], int motorMax) {
 }
 
 void motorImplementationFinalize(int motorPins[], int motorMax) {
-    munmap(dshotGpioMap, BLOCK_SIZE);
+    munmap(dshotGpioMap, MAPPED_MEM_SIZE);
 }
 
 void motorImplementationSendThrottles(int motorPins[], int motorMax, double motorThrottle[]) {
