@@ -1,9 +1,14 @@
 
 This project allows to generate DSHOT protocol to control ESCs via the
 GPIO pins of a Raspberry Pi.  It was developed and used on Raspberry
-Pi Zero 2, but should work on any Raspberry Pi including Rpi 5. We
-have a more sophisticated implementation for older models with
-less CPU consumption at https://github.com/Marian-Vittek/raspberry-pi-dshot-smi .
+Pi Zero 2, but should work on any Raspberry Pi including Rpi 5.
+
+We have a more sophisticated implementation for Raspberry Pi 5 using
+RP1 coprocessor at
+https://github.com/Marian-Vittek/raspberry-pi-dshot-pio .
+
+For Raspberry Pi 1/2/3/4 there is an implementation based on SMI hardware at 
+https://github.com/Marian-Vittek/raspberry-pi-dshot-smi .
 
 This implementation uses busy wait and 'clock_gettime' for timing and
 handles DSHOT 150 protocol well. It is running on standard Raspbian
