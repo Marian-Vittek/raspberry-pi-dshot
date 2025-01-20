@@ -7,7 +7,7 @@ We have a more sophisticated implementation for Raspberry Pi 5 using
 RP1 coprocessor at
 https://github.com/Marian-Vittek/raspberry-pi-dshot-pio .
 
-For Raspberry Pi 1/2/3/4 there is an implementation based on SMI hardware at 
+There is another implementation based on SMI hardware for Raspberry Pi 1/2/3/4 at 
 https://github.com/Marian-Vittek/raspberry-pi-dshot-smi .
 
 This implementation uses busy wait and 'clock_gettime' for timing and
