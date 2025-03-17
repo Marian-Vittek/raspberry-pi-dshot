@@ -10,7 +10,7 @@ https://github.com/Marian-Vittek/raspberry-pi-dshot-pio .
 There is another implementation based on SMI hardware of Raspberry Pi 1/2/3/4 at 
 https://github.com/Marian-Vittek/raspberry-pi-dshot-smi .
 
-This directory contains a 'naive' implementation code is inspired by
+This directory contains a 'naive' implementation inspired by
 https://github.com/dmrlawson/raspberrypi-dshot. Compared to it this
 version:
 
